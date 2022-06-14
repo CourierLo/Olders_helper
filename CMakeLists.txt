@@ -114,6 +114,7 @@ catkin_package(
 include_directories(
   include
   ${olders_helper}/include
+  ${olders_helper}/include/xunfei_sdk
   ${catkin_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
 )
@@ -136,8 +137,9 @@ add_library(audio_client
 add_executable(audio_server src/audio_server.cpp)
 add_executable(robot_action src/robot_action.cpp)
 add_executable(action_client src/action_client.cpp)
-add_executable(test_audio src/test_audio_trans.cpp)
-add_executable(test_mqtt src/test_mqtt.cpp)
+add_executable(test_audio src/test/test_audio_trans.cpp)
+add_executable(test_mqtt src/test/test_mqtt.cpp)
+add_executable(tts_voice_node src/xf_tts.cpp)
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -165,7 +167,11 @@ target_link_libraries( test_audio
 )
 
 target_link_libraries( test_mqtt
-  ${catkin_LIBRARIES} /usr/local/lib/libpaho-mqtt3c.so
+  ${catkin_LIBRARIES} /usr/local/lib/libpaho-mqtt3c.so 
+)
+
+target_link_libraries( tts_voice_node
+  ${catkin_LIBRARIES} /home/oem/catkin_ws/src/Olders_helper/lib/libmsc.so
 )
 # /usr/local/lib libpaho-mqtt3a.so
 
