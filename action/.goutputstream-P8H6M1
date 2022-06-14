@@ -1,0 +1,8 @@
+# goal definition
+uint8 command
+---
+#result definition
+#string result
+---
+#feedback
+string progress

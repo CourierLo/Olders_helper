@@ -1,0 +1,24 @@
+# use radian
+origin:
+  x: 0.881
+  y: 1.866
+  yaw: 2.864
+
+living_room:
+  x: -0.800
+  y: 1.940
+  yaw: -2.846
+
+bedroom:
+  x: -0.943
+  y: -1.829
+  yaw: 0.179
+
+kitchen:
+  x: 0.999
+  y: -1.866
+  yaw: 0.096
+
+light_intensity: 0
+temperature: 0
+gas_concentration: 0

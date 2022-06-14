@@ -1,0 +1,20 @@
+# use radian
+origin:
+  x: 0.1
+  y: -0.1
+  yaw: 0.100
+
+living_room:
+  x: 0.7
+  y: -0.1
+  yaw: 0.100
+
+bedroom:
+  x: 2.966
+  y: 0.745
+  yaw: -0.1
+
+kitchen:
+  x: 2.587
+  y: -1.236
+  yaw: -0.142
