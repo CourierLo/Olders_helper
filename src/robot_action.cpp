@@ -250,8 +250,10 @@ namespace robot_action{
     // 客户端发送cancel后执行的回调函数
     void RobotAction::preemptCB(){
         ROS_ERROR("[%s] I got preempted !", action_name_.c_str());
+
+        //虽然说直接cancel不太好，但是也能这么做
         move_base_ac_ptr->cancelGoal();
-        // 严格意义上说，语音也要终止，但是懒得弄了
+        // 严格意义上说，语音也要终止，所以也得can掉
 
         as_.setPreempted();
     }
