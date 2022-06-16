@@ -9,6 +9,10 @@
 #include <boost/bind.hpp>
 #include <audio_client.h>
 #include <MQTTClient.h>
+#include <std_msgs/String.h>
+#include <sound_play/SoundRequestAction.h>
+#include <sound_play/SoundRequestGoal.h>
+#include <olders_helper/tts_text.h>
 
 // don't split checking and broadcasting by now
 // for now, we get the number and then speak it out.
@@ -31,11 +35,13 @@ namespace robot_action{
     } trig;
 
     typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
+    typedef actionlib::SimpleActionClient<sound_play::SoundRequestAction> SoundPlayClient;
 
     #define GOALS_NUM 5
     #define QOS 0
     #define ON (int)1
     #define OFF (int)0
+    #define INV (int)-1
 
     class RobotAction{
     protected:
@@ -44,15 +50,14 @@ namespace robot_action{
         std::string action_name_;
         olders_helper::robotFeedback feedback_;
         MoveBaseClient* move_base_ac_ptr;
-        //olders_helper::robotActionResult result_;
         move_base_msgs::MoveBaseGoal candidate_goal[GOALS_NUM];
         std::string sites_name[GOALS_NUM] = { "origin", "living_room", "bedroom", "kitchen" };
         // 候选目标点以及传感器的数值直接读参数服务器的param
         double x, y, yaw;
-        AudioClient audio_client;
+        //AudioClient audio_client;
         double light_intensity, temperature, humidity;
         int smokeExist;
-        int state_fan = 0, state_stove = 1, state_curtain = 0, state_light = 0;
+        int state_fan = 0, state_stove = 1, state_curtain = 1, state_light = 0;
 
         MQTTClient client;
         MQTTClient_connectOptions conn_opts = MQTTClient_connectOptions_initializer;
@@ -60,6 +65,12 @@ namespace robot_action{
         MQTTClient_deliveryToken token;
 
         bool turnOffCurtainFlag = false;
+
+        // TTS and Player
+        olders_helper::tts_text text_srv;
+        SoundPlayClient* sound_play_client_ptr;
+        ros::ServiceClient tts_client;
+        std::string wav_file_path;
 
     public:
         RobotAction(std::string name);
@@ -69,12 +80,19 @@ namespace robot_action{
         // TODO: need to modify feedback and result
         void excuteCB(const olders_helper::robotGoalConstPtr &goal);
             
-
         // 客户端发送cancel后执行的回调函数
         void preemptCB();
 
+
         void initAllGoals();
 
+        // 只是想用来测试关窗帘的计时器好不好使，结果是还不如直接sleep掉, abandon
         void turnOffCurtain(const ros::TimerEvent& event);
+
+        bool headForLocation(SITE loc);
+
+        bool ttsAndPlay(std::string& text);
+
+        void applianceSwitch(int id, int op);
     };
 }

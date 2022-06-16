@@ -2,6 +2,7 @@
 #include <olders_helper/robotAction.h>
 #include <actionlib/client/simple_action_client.h>
 #include <std_msgs/Int32.h>
+#include <std_msgs/String.h>
 #include <audio_client.h>
 
 typedef actionlib::SimpleActionClient<olders_helper::robotAction> Client;
@@ -11,19 +12,20 @@ protected:
     ros::NodeHandle nh;
     olders_helper::robotGoal goal;
     actionlib::SimpleActionClient<olders_helper::robotAction>* ac_ptr;
-    AudioClient player;
+    // AudioClient player;
     
 public:
     ActionClient(){
         ac_ptr = new actionlib::SimpleActionClient<olders_helper::robotAction>("robot_action_server", true);
-        ROS_INFO("Waiting for action server to start...");
+        ROS_INFO("Waiting for robot action server to start...");
         ac_ptr->waitForServer();
         ROS_INFO("Successfully connect to server.");
 
-        player.receive_audio_and_play("欢迎使用E S A C实验室助老机器人系统， 有什么可以帮到您？");
+        //player.receive_audio_and_play("欢迎使用E S A C实验室助老机器人系统， 有什么可以帮到您？");
         // 必须得bind，不然编译编译不通过，原因不知道
         // 而且你的subscriber必须得加ss<class>
         ros::Subscriber operation_sub = nh.subscribe<std_msgs::Int32>("operation", 100, boost::bind(&ActionClient::operationCB, this, _1));
+        ros::Subscriber operation_str_sub = nh.subscribe<std_msgs::String>("operation_str", 100, boost::bind(&ActionClient::operationStrCB, this, _1));
 
         ros::spin();
     }
@@ -39,8 +41,12 @@ public:
         ac_ptr->sendGoal(goal, boost::bind(&ActionClient::finishCB, this, _1, _2), boost::bind(&ActionClient::startCB, this), boost::bind(&ActionClient::feedbackCB, this, _1));
     }
 
+    void operationStrCB(const std_msgs::String::ConstPtr& msg){
+        ROS_INFO("\033[32mReceive command string: %s \033[0m", msg->data.c_str());
+    }
+
     void finishCB(const actionlib::SimpleClientGoalState& state, const olders_helper::robotResultConstPtr& res){
-        ROS_WARN("Action status:[%s]", state.toString().c_str());
+        ROS_WARN("Action status:[%s]", state.getText().c_str());
         //res是空的所以不管它了
     }
 
@@ -49,7 +55,7 @@ public:
     }
 
     void feedbackCB(const olders_helper::robotFeedbackConstPtr& feedback){
-        ROS_INFO("Client get feedback:[%s]", feedback->progress);
+        ROS_INFO("Client get feedback:[%s]", feedback->progress.c_str());
     }
 
 };

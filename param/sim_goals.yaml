@@ -19,6 +19,7 @@ kitchen:
   y: -1.866
   yaw: 0.096
 
-light_intensity: 0
-temperature: 0
-gas_concentration: 0
+illuminance: 400.0
+humidity: 80
+temprature: 28
+smokeExist: 1

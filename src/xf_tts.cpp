@@ -6,6 +6,9 @@
 #include <xf_tts.h>
 /* 文本合成 */
 namespace xf_tts{
+    XF_TTS::XF_TTS(ros::NodeHandle &nh) : nh_(nh) {
+        // sound_play_client_ptr = new SoundPlayClient("/sound_play", true);
+    }
 
     int XF_TTS::text_to_speech(const char* src_text, const char* des_path, const char* params)
     {
@@ -141,35 +144,45 @@ namespace xf_tts{
     /**
      *接受/voice/xf_tts_topic话题的字符串的回调函数
     */
-    void XF_TTS::TTSCallback(const std_msgs::String::ConstPtr &msg) {
-        std::cout<<"get topic text: " << msg->data.c_str();
-        makeTextToWav(msg->data.c_str(), FileName);
+    bool XF_TTS::TextToSpeech(olders_helper::tts_text::Request& req, olders_helper::tts_text::Response& res) {
+        std::cout<<"get topic text: " << req.text.c_str();
+        makeTextToWav(req.text.c_str(), FileName);
         //PlayWav();
 
-        if(sound_play_client_ptr->getState() == actionlib::SimpleClientGoalState::ACTIVE)   sound_play_client_ptr->cancelGoal();
+        // if(sound_play_client_ptr->getState() == actionlib::SimpleClientGoalState::ACTIVE)   
+        //     sound_play_client_ptr->cancelGoal();
 
-        // 必须注明音量
-        sound_play::SoundRequestGoal goal;
-        goal.sound_request.arg = "/home/oem/catkin_ws/src/Olders_helper/audio/voice.wav";
-        goal.sound_request.sound = goal.sound_request.PLAY_FILE;
-        goal.sound_request.command = goal.sound_request.PLAY_ONCE;
-        goal.sound_request.volume = 30.0;
+        // // 必须注明音量
+        // sound_play::SoundRequestGoal goal;
+        // goal.sound_request.arg = "/home/oem/catkin_ws/src/Olders_helper/audio/voice.wav";
+        // goal.sound_request.sound = goal.sound_request.PLAY_FILE;
+        // goal.sound_request.command = goal.sound_request.PLAY_ONCE;
+        // goal.sound_request.volume = 20.0;
 
-        //std::cout << goal.sound_request.arg << "\n";
+        // //std::cout << goal.sound_request.arg << "\n";
 
-        sound_play_client_ptr->sendGoal(goal);
+        // sound_play_client_ptr->sendGoal(goal);
+        res.tts_ok = true;
+
+        return true;
     }
 }
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
     ros::init(argc, argv,"xf_tts_node");
+    ros::NodeHandle nh_;
     const char* start = "你好";
-    const char* FileName = "/home/oem/catkin_ws/src/Olders_helper/audio/voice.wav";
-    xf_tts::XF_TTS tts_client;
+    //const char* FileName = "/home/oem/catkin_ws/src/Olders_helper/audio/voice.wav";
+    std::string wav_file_path;
+    nh_.getParam("wav_file_path", wav_file_path);
+    
+    xf_tts::XF_TTS tts_client(nh_);
 
-    tts_client.makeTextToWav(start, FileName);
+    tts_client.makeTextToWav(start, wav_file_path.c_str());
     tts_client.PlayWav();
+
+    // 必须得按NodeHandle的例程来写，不要加ConstPtr，函数必须是bool返回值
+    ros::ServiceServer tts_srv = nh_.advertiseService("xf_tts", &xf_tts::XF_TTS::TextToSpeech, &tts_client);
 
     ros::spin();
 

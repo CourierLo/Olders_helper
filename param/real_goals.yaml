@@ -18,3 +18,5 @@ kitchen:
   x: 2.587
   y: -1.236
   yaw: -0.142
+
+wav_file_path: /home/pi/catkin_ws/src/Olders_helper/audio/audio.wav

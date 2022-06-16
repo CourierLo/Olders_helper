@@ -10,7 +10,22 @@ namespace robot_action{
         as_.start();
 
         move_base_ac_ptr = new MoveBaseClient("/move_base", true);
+        ROS_INFO("Waiting for move_base server to start...");
+        move_base_ac_ptr->waitForServer();
+        ROS_INFO("Successfully connect to server.");
         initAllGoals();
+        
+        // TTS and Player
+        tts_client = nh_.serviceClient<olders_helper::tts_text>("xf_tts");     // tts client
+        sound_play_client_ptr = new SoundPlayClient("/sound_play", true);      // player action client
+        ROS_INFO("Waiting for tts server to start...");
+        sound_play_client_ptr->waitForServer();
+        ROS_INFO("Successfully connect to server.");
+        nh_.getParam("wav_file_path", wav_file_path);
+        ROS_INFO("\033[32mWav File Path is: %s \033[0m", wav_file_path.c_str());
+
+        std::string speech_text = "欢迎使用E S A C实验室助老机器人系统， 有什么可以帮到您？";
+        ttsAndPlay(speech_text);
 
         // MQTT
         conn_opts.keepAliveInterval = 1800;
@@ -35,17 +50,226 @@ namespace robot_action{
         turnOffCurtainFlag = true;
     }
 
+    bool RobotAction::ttsAndPlay(std::string& text){
+        // XF TTS Service
+        text_srv.request.text = text;
+        tts_client.call(text_srv);
+
+        // Sound play
+        sound_play::SoundRequestGoal goal;
+        goal.sound_request.arg = wav_file_path;
+        goal.sound_request.sound = goal.sound_request.PLAY_FILE;
+        goal.sound_request.command = goal.sound_request.PLAY_ONCE;
+        goal.sound_request.volume = 20.0;
+        sound_play_client_ptr->sendGoal(goal);
+
+        // check whether get preempted or not
+        ros::Rate r(10);
+        while(sound_play_client_ptr->getState() != actionlib::SimpleClientGoalState::SUCCEEDED){
+            if(as_.isPreemptRequested()){
+                // no need to set result
+                return false;
+            }
+            r.sleep();
+        }
+
+        return true;
+    }
+
+    bool RobotAction::headForLocation(SITE loc){
+        ros::Rate r(10);
+        move_base_ac_ptr->sendGoal(candidate_goal[loc]);
+        while(move_base_ac_ptr->getState() != actionlib::SimpleClientGoalState::SUCCEEDED){
+            if(as_.isPreemptRequested()){
+                // no need to set result
+                return false;
+            }
+            r.sleep();
+        }
+        return true;
+    }
+
+    void RobotAction::applianceSwitch(int id, int op){
+        std::string topic = "m" + boost::to_string(id) + "_switch_topic";
+        std::string payload = "sw" + boost::to_string(id) + (op ? "_on" : "_off");
+        publish_msg.payload = (void *)(payload.c_str());
+        publish_msg.payloadlen = payload.length();
+        MQTTClient_publishMessage(client, topic.c_str(), &publish_msg, &token);
+        ros::Duration(0.25).sleep();
+    }
+
     // 收到客户端发送goal后的回调函数
     // 应该不需要在Tour行为的连接处加点延时，因为audio_client和action是一个线程
     // TODO: need to modify feedback and result
     void RobotAction::excuteCB(const olders_helper::robotGoalConstPtr &goal){
         int command = goal->command;
-        ros::Rate r(2);
+        ros::Rate r(10);
         feedback_.progress.clear();
+        std::string speech_text;
         switch(command){
+            case TOUR:
+            case REACH_LIVINGROOM:
+                //audio_client.receive_audio_and_play("前往客厅");
+                speech_text = "前往客厅";
+                if(!ttsAndPlay(speech_text))  return;
+                if(!headForLocation(LIVING_ROOM))  return;
+                //audio_client.receive_audio_and_play("到达客厅");
+                speech_text = "到达客厅";
+                if(!ttsAndPlay(speech_text))  return ;
+                feedback_.progress = "reached living room.";
+                as_.publishFeedback(feedback_);
+                if(command != TOUR) break;
+
+            case CHECK_LIGHT:
+                nh_.getParam("/illuminance", light_intensity);
+                ROS_INFO("light intensity is: %lf", light_intensity);
+                //audio_client.receive_audio_and_play("当前光照强度为" + boost::to_string(light_intensity));
+                speech_text = "当前光照强度为" + boost::to_string(light_intensity);
+                if(!ttsAndPlay(speech_text))  return;
+                feedback_.progress = "checked lights.";
+                as_.publishFeedback(feedback_);
+                if(command != TOUR) break;
+
+            case SWITCH_LIGHT:
+                feedback_.progress = "switching lights...";
+                as_.publishFeedback(feedback_);
+                if(command == TOUR && light_intensity <= LIGHT_TRIG){
+                    //audio_client.receive_audio_and_play("检测到光线太弱，为您打开灯和窗帘。");
+                    speech_text = "检测到光线太弱，为您打开灯和窗帘。";
+                    if(!ttsAndPlay(speech_text))  return;
+                    // turn on lights: s4 ~ s5
+                    applianceSwitch(4, OFF);  applianceSwitch(5, OFF);
+                    state_light = ON;
+                }
+                else if(command != TOUR){
+                    // switch
+                    // 这里最好获取状态，人也有可能关灯的, 但是不知道如何获取，那只能只能根据保存的状态判断了
+                    int next_state = state_light ? OFF : ON;
+                    applianceSwitch(4, next_state);  applianceSwitch(5, next_state);
+                    state_light ^= state_light;  // 异或就是取反
+                    break;
+                }
+            
+            case SWITCH_CURTAIN:
+                // TODO： 我不知道是哪个switch， 所以这里要改
+                feedback_.progress = "switching curtain...";
+                as_.publishFeedback(feedback_);
+                if(command == TOUR && light_intensity <= LIGHT_TRIG){
+                    //audio_client.receive_audio_and_play("检测到光线太弱，为您打开灯和窗帘。");
+                    // turn on lights: s1
+                    applianceSwitch(1, ON);
+
+                    // 计时器并不好用
+                    // ros::Timer timer = nh_.createTimer(ros::Duration(5.0), boost::bind(&RobotAction::turnOffCurtain, this, _1));
+                    // ros::Rate r(30);
+                    // while(!turnOffCurtainFlag){
+                    //     ros::spinOnce();
+                    //     r.sleep();
+                    // }
+                    //turnOffCurtainFlag = false;
+
+                    sleep(5);   // 因为没有给窗帘编码，所以得如此丑陋地停掉电机
+                    applianceSwitch(1, OFF);
+                }
+                else if(command != TOUR){
+                    // switch
+                    // 这里最好获取状态，人也有可能关灯的, 但是不知道如何获取，那只能只能根据保存的状态判断了
+                    if(state_curtain == 1)  applianceSwitch(1, ON);
+                    else if(state_curtain == 0) applianceSwitch(1, INV);
+                    sleep(5);
+                    applianceSwitch(1, OFF);
+                    state_curtain ^= state_curtain;  // 异或就是取反
+                    break;
+                }
+
+            case REACH_BEDROOM:
+                //audio_client.receive_audio_and_play("前往卧室");
+                speech_text = "前往卧室";
+                if(!ttsAndPlay(speech_text)) return;
+                if(!headForLocation(BEDROOM)) return;
+                //audio_client.receive_audio_and_play("到达卧室");
+                speech_text = "到达卧室";
+                if(!ttsAndPlay(speech_text)) return;
+                feedback_.progress = "reached bedroom.";
+                as_.publishFeedback(feedback_);
+                if(command != TOUR) break;
+
+            case CHECK_TEMP:
+                nh_.getParam("/temprature", temperature);
+                nh_.getParam("/humidity", humidity);
+                ROS_INFO("Current temp and humidity is: %lf, %lf", temperature, humidity);
+                //audio_client.receive_audio_and_play("当前温度为" + boost::to_string(temperature) + ", 湿度为" + boost::to_string(humidity));
+                speech_text = "当前温度为" + boost::to_string(temperature) + ", 湿度为" + boost::to_string(humidity);
+                if(!ttsAndPlay(speech_text))  return;
+                feedback_.progress = "checked temperature.";
+                as_.publishFeedback(feedback_);
+                if(command != TOUR) break;
+
+            case SWITCH_FAN:
+                feedback_.progress = "switching fans...";
+                as_.publishFeedback(feedback_);
+                if(command == TOUR && temperature > TEMP_TRIG){
+                    //audio_client.receive_audio_and_play("检测到室内温度较高，为您打开风扇。");
+                    speech_text = "检测到室内温度较高，为您打开风扇。";
+                    if(!ttsAndPlay(speech_text))  return;
+                    // turn on fans: s2 ~ s3
+                    applianceSwitch(2, ON);  applianceSwitch(3, ON);
+                    state_fan = ON;
+                }
+                else if(command != TOUR) {
+                    // switch fans
+                    int next_state = state_fan ? OFF : ON;
+                    applianceSwitch(2, next_state);  applianceSwitch(3, next_state);
+                    state_fan ^= state_fan;
+                    break;
+                }
+
+            case REACH_KITCHEN:
+                //audio_client.receive_audio_and_play("前往厨房");
+                speech_text = "前往厨房";
+                if(!ttsAndPlay(speech_text))  return;
+                if(!headForLocation(KITCHEN)) return;
+                //audio_client.receive_audio_and_play("到达厨房");
+                speech_text = "到达厨房";
+                if(!ttsAndPlay(speech_text))  return;
+
+                feedback_.progress = "reached kitchen.";
+                as_.publishFeedback(feedback_);
+                if(command != TOUR)  break;
+
+            case CHECK_GAS:
+                nh_.getParam("/smokeExist", smokeExist);
+                ROS_INFO("Does Smoke Exist: %d", smokeExist);
+                //audio_client.receive_audio_and_play("当前烟雾浓度为" + boost::to_string(20));
+                speech_text = "当前烟雾浓度为" + boost::to_string(20);
+                if(!ttsAndPlay(speech_text))  return;
+
+                feedback_.progress = "checked gas.";
+                as_.publishFeedback(feedback_);
+
+                if(command != TOUR)  break;
+
+            case SWITCH_STOVE:
+                feedback_.progress = "switching stove...";
+                as_.publishFeedback(feedback_);
+                if(command == TOUR && 21 > GAS_TRIG){
+                    //audio_client.receive_audio_and_play("检测到有较大烟雾，为您关闭煤气灶。");
+                    speech_text = "检测到有较大烟雾，为您关闭煤气灶。";
+                    if(!ttsAndPlay(speech_text))  return;
+                    // turn off stove
+
+                }
+                else if(command != TOUR) {
+                    // switch
+
+                    break;
+                }
+            
             case RESET:
                 // 回原点
-                audio_client.receive_audio_and_play("我回去罚站了...");
+                //audio_client.receive_audio_and_play("我回去罚站了...");
+                speech_text = "我回去罚站了...";
+                if(!ttsAndPlay(speech_text))  return;
                 candidate_goal[ORIGIN].target_pose.header.stamp = ros::Time::now();
                 move_base_ac_ptr->sendGoal(candidate_goal[ORIGIN]);
                 while(move_base_ac_ptr->getState() != actionlib::SimpleClientGoalState::SUCCEEDED){
@@ -58,185 +282,6 @@ namespace robot_action{
                 feedback_.progress = "back to the origin.";
                 as_.publishFeedback(feedback_);
                 break;
-
-            case TOUR:
-            case REACH_LIVINGROOM:
-                audio_client.receive_audio_and_play("前往客厅");
-                move_base_ac_ptr->sendGoal(candidate_goal[LIVING_ROOM]);
-                while(move_base_ac_ptr->getState() != actionlib::SimpleClientGoalState::SUCCEEDED){
-                    if(as_.isPreemptRequested()){
-                        // no need to set result
-                        return;
-                    }
-                    r.sleep();
-                }
-                audio_client.receive_audio_and_play("到达客厅");
-                feedback_.progress = "reached living room.";
-                as_.publishFeedback(feedback_);
-                if(command != TOUR) break;
-
-            case CHECK_LIGHT:
-                nh_.getParam("/illuminance", light_intensity);
-                ROS_INFO("light intensity is: %lf", light_intensity);
-                audio_client.receive_audio_and_play("当前光照强度为" + boost::to_string(light_intensity));
-                feedback_.progress = "checked lights.";
-                as_.publishFeedback(feedback_);
-                if(command != TOUR) break;
-
-            case SWITCH_LIGHT:
-                feedback_.progress = "switching lights...";
-                as_.publishFeedback(feedback_);
-                if(command == TOUR && light_intensity <= LIGHT_TRIG){
-                    audio_client.receive_audio_and_play("检测到光线太弱，为您打开灯和窗帘。");
-                    // turn on lights: s4 ~ s5
-                    for(int i = 4; i <= 5; ++i){
-                        std::string topic = "m" + boost::to_string(i) + "_switch_topic";
-                        std::string payload = "sw" + boost::to_string(i) + "_on";
-                        publish_msg.payload = (void *)(payload.c_str());
-                        publish_msg.payloadlen = payload.length();
-                        MQTTClient_publishMessage(client, topic.c_str(), &publish_msg, &token);
-                        ros::Duration(0.15).sleep();
-                    }
-                    state_light = ON;
-                }
-                else if(command != TOUR){
-                    // switch
-                    // 这里最好获取状态，人也有可能关灯的, 但是不知道如何获取，那只能只能根据保存的状态判断了
-                    for(int i = 4; i <= 5; ++i){
-                        std::string topic = "m" + boost::to_string(i) + "_switch_topic";
-                        std::string payload = "sw" + boost::to_string(i) + (state_fan ? "_off" : "_on");
-                        publish_msg.payload = (void *)(payload.c_str());
-                        publish_msg.payloadlen = payload.length();
-                        MQTTClient_publishMessage(client, topic.c_str(), &publish_msg, &token);
-                        ros::Duration(0.15).sleep();
-                    }
-                    state_light ^= state_light;  // 异或就是取反
-                    break;
-                }
-            
-            case SWITCH_CURTAIN:
-                // TODO： 我不知道是哪个switch， 所以这里要改
-                feedback_.progress = "switching curtain...";
-                as_.publishFeedback(feedback_);
-                if(command == TOUR && light_intensity <= LIGHT_TRIG){
-                    //audio_client.receive_audio_and_play("检测到光线太弱，为您打开灯和窗帘。");
-                    // turn on lights: s1
-                    std::string payload = "sw1_on";
-                    publish_msg.payload = (void *)payload.c_str();
-                    publish_msg.payloadlen = payload.length();
-                    MQTTClient_publishMessage(client, "m1_switch_topic", &publish_msg, &token);
-                    state_light = OFF;
-
-                    ros::Timer timer = nh_.createTimer(ros::Duration(5.0), boost::bind(&RobotAction::turnOffCurtain, this, _1));
-                    ros::Rate r(30);
-                    while(!turnOffCurtainFlag){
-                        ros::spinOnce();
-                        r.sleep();
-                    }
-                    turnOffCurtainFlag = false;
-                }
-                else if(command != TOUR){
-                    // switch
-                    // 这里最好获取状态，人也有可能关灯的, 但是不知道如何获取，那只能只能根据保存的状态判断了
-                    std::string payload = "sw1";
-                    payload += state_light == 0 ? "_off" : "_on";
-                    publish_msg.payload = (void *)(payload.c_str());
-                    publish_msg.payloadlen = payload.length();
-                    MQTTClient_publishMessage(client, "m1_switch_topic", &publish_msg, &token);
-                    state_curtain ^= state_curtain;  // 异或就是取反
-                    break;
-                }
-
-            case REACH_BEDROOM:
-                audio_client.receive_audio_and_play("前往卧室");
-                move_base_ac_ptr->sendGoal(candidate_goal[BEDROOM]);
-                while(move_base_ac_ptr->getState() != actionlib::SimpleClientGoalState::SUCCEEDED){
-                    if(as_.isPreemptRequested()){
-                        // no need to set result
-                        return;
-                    }
-                    r.sleep();
-                }
-                audio_client.receive_audio_and_play("到达卧室");
-                feedback_.progress = "reached bedroom.";
-                as_.publishFeedback(feedback_);
-                if(command != TOUR) break;
-
-            case CHECK_TEMP:
-                nh_.getParam("/temprature", temperature);
-                nh_.getParam("/humidity", humidity);
-                ROS_INFO("Current temp and humidity is: %lf, %lf", temperature, humidity);
-                audio_client.receive_audio_and_play("当前温度为" + boost::to_string(temperature) + ", 湿度为" + boost::to_string(humidity));
-                feedback_.progress = "checked temperature.";
-                as_.publishFeedback(feedback_);
-                if(command != TOUR) break;
-
-            case SWITCH_FAN:
-                feedback_.progress = "switching fans...";
-                as_.publishFeedback(feedback_);
-                if(command == TOUR && temperature > TEMP_TRIG){
-                    audio_client.receive_audio_and_play("检测到室内温度较高，为您打开风扇。");
-                    // turn on fans: s2 ~ s3
-                    for(int i = 2; i <= 3; ++i){
-                        std::string topic = "m" + boost::to_string(i) + "_switch_topic";
-                        std::string payload = "sw" + boost::to_string(i) + "_on";
-                        publish_msg.payload = (void *)(payload.c_str());
-                        publish_msg.payloadlen = payload.length();
-                        MQTTClient_publishMessage(client, topic.c_str(), &publish_msg, &token);
-                        ros::Duration(0.15).sleep();
-                    }
-                    state_fan = ON;
-                }
-                else if(command != TOUR) {
-                    // switch fans
-                    for(int i = 2; i <= 3; ++i){
-                        std::string topic = "m" + boost::to_string(i) + "_switch_topic";
-                        std::string payload = "sw" + boost::to_string(i) + (state_fan ? "_off" : "_on");
-                        publish_msg.payload = (void *)(payload.c_str());
-                        publish_msg.payloadlen = payload.length();
-                        MQTTClient_publishMessage(client, topic.c_str(), &publish_msg, &token);
-                        ros::Duration(0.15).sleep();
-                    }
-                    state_fan ^= state_fan;
-                    break;
-                }
-
-            case REACH_KITCHEN:
-                audio_client.receive_audio_and_play("前往厨房");
-                move_base_ac_ptr->sendGoal(candidate_goal[KITCHEN]);
-                while(move_base_ac_ptr->getState() != actionlib::SimpleClientGoalState::SUCCEEDED){
-                    if(as_.isPreemptRequested()){
-                        // set result
-                        return;
-                    }
-                    r.sleep();
-                }
-                audio_client.receive_audio_and_play("到达厨房");
-                feedback_.progress = "reached kitchen.";
-                as_.publishFeedback(feedback_);
-                if(command != TOUR)  break;
-
-            case CHECK_GAS:
-                nh_.getParam("/smokeExist", smokeExist);
-                ROS_INFO("Does Smoke Exist: %d", smokeExist);
-                audio_client.receive_audio_and_play("当前烟雾浓度为" + boost::to_string(20));
-                feedback_.progress = "checked gas.";
-                as_.publishFeedback(feedback_);
-                if(command != TOUR)  break;
-
-            case SWITCH_STOVE:
-                feedback_.progress = "switching stove...";
-                as_.publishFeedback(feedback_);
-                if(command == TOUR && 21 > GAS_TRIG){
-                    audio_client.receive_audio_and_play("检测到有较大烟雾，为您关闭煤气灶。");
-                    // turn off stove
-
-                }
-                else if(command != TOUR) {
-                    // switch
-
-                    break;
-                }
         }
 
         // 整个过程没有发生抢占，设为成功
@@ -251,9 +296,9 @@ namespace robot_action{
     void RobotAction::preemptCB(){
         ROS_ERROR("[%s] I got preempted !", action_name_.c_str());
 
-        //虽然说直接cancel不太好，但是也能这么做
-        move_base_ac_ptr->cancelGoal();
-        // 严格意义上说，语音也要终止，所以也得can掉
+        // 如果在跑， cancel, 严格意义上说，语音也要终止，所以也得can掉
+        if(move_base_ac_ptr->getState() == actionlib::SimpleClientGoalState::ACTIVE)    move_base_ac_ptr->cancelGoal();
+        if(sound_play_client_ptr->getState() == actionlib::SimpleClientGoalState::ACTIVE)   sound_play_client_ptr->cancelGoal();
 
         as_.setPreempted();
     }

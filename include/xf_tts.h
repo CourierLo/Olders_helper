@@ -1,8 +1,7 @@
 #include <ros/ros.h>
 #include <actionlib/client/simple_action_client.h>
 #include <std_msgs/String.h>
-#include <sound_play/SoundRequestAction.h>
-#include <sound_play/SoundRequestGoal.h>
+#include <olders_helper/tts_text.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -52,21 +51,20 @@ namespace xf_tts{
         0
     };
 
-    typedef actionlib::SimpleActionClient<sound_play::SoundRequestAction> SoundPlayClient;
-
     class XF_TTS{
     private:
         const char* FileName = "/home/oem/catkin_ws/src/Olders_helper/audio/voice.wav";
         const char* PlayPath = "play /home/oem/catkin_ws/src/Olders_helper/audio/voice.wav";
 
         ros::NodeHandle nh_;
-        ros::Subscriber sub = nh_.subscribe<std_msgs::String>("/voice/xf_tts_topic",3, bind(&XF_TTS::TTSCallback, this, _1));
-        SoundPlayClient* sound_play_client_ptr = new SoundPlayClient("/sound_play", true);
+        //ros::Subscriber sub = nh_.subscribe<std_msgs::String>("/voice/xf_tts_topic",3, bind(&XF_TTS::TextToSpeech, this, _1));
+        // SoundPlayClient* sound_play_client_ptr;
 
     public:
+        XF_TTS(ros::NodeHandle& nh);
         int text_to_speech(const char* src_text, const char* des_path, const char* params);
         int makeTextToWav(const char* text, const char* filename);
         void PlayWav();
-        void TTSCallback(const std_msgs::String::ConstPtr &msg);
+        bool TextToSpeech(olders_helper::tts_text::Request& req, olders_helper::tts_text::Response& res);
     };
 }

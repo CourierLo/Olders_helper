@@ -1,14 +1,17 @@
 <launch>
-    <!-- <param name="/use_sim_time" value="true" />
+    <param name="/use_sim_time" value="true" />
 
     <include file = "$(find turtlebot3_gazebo)/launch/turtlebot3_world.launch"/>
 
 
     <include file = "$(find turtlebot3_navigation)/launch/turtlebot3_navigation.launch">
         <arg name = "map_file"  value = "/home/oem/map.yaml" /> 
-    </include> -->
+    </include>
 
     <rosparam file = "$(find olders_helper)/param/sim_goals.yaml"/>
-
+    <node pkg="olders_helper" type="tts_tts_voice_node" name="tts_voice_node" output="screen" />
+    <node pkg="olders_helper" type="robot_action" name="robot_action_node" output="screen" />
+    <!-- <node pkg="olders_helper" type="audio_server" name="audio_server" output="screen"/> -->
+    <node pkg="olders_helper" type="action_client" name="action_client" output="screen"/>
 
 </launch>

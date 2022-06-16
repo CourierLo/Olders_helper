@@ -80,16 +80,6 @@ void AudioClient::receive_audio_and_play(const std::string& speech){
     printf("Receive File:\t%s From Server IP Successful!\n", text);
     fclose(fp);
 
-// -----------------NLP组的要求--------------------
-    // // 给他发个success
-    // strcpy(buffer, "success");
-    // // 向服务器发送buffer中的数据
-    // if(send(client_socket_fd, buffer, BUFFER_SIZE, 0) < 0) {
-    //     perror("Send File Name Failed:");
-    //     exit(1);
-    // }
-// ---------------end sending success--------------
-
     close(client_socket_fd);
 
     // 用sox播放器播放， 小车先得安装sox
