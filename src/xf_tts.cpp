@@ -8,6 +8,7 @@
 namespace xf_tts{
     XF_TTS::XF_TTS(ros::NodeHandle &nh) : nh_(nh) {
         // sound_play_client_ptr = new SoundPlayClient("/sound_play", true);
+        nh_.getParam("wav_file_path", wav_file_path);
     }
 
     int XF_TTS::text_to_speech(const char* src_text, const char* des_path, const char* params)
@@ -145,8 +146,8 @@ namespace xf_tts{
      *接受/voice/xf_tts_topic话题的字符串的回调函数
     */
     bool XF_TTS::TextToSpeech(olders_helper::tts_text::Request& req, olders_helper::tts_text::Response& res) {
-        std::cout<<"get topic text: " << req.text.c_str();
-        makeTextToWav(req.text.c_str(), FileName);
+        // std::cout<<"get topic text: " << req.text.c_str();
+        makeTextToWav(req.text.c_str(), wav_file_path.c_str());
         //PlayWav();
 
         // if(sound_play_client_ptr->getState() == actionlib::SimpleClientGoalState::ACTIVE)   
@@ -175,7 +176,9 @@ int main(int argc, char* argv[]) {
     //const char* FileName = "/home/oem/catkin_ws/src/Olders_helper/audio/voice.wav";
     std::string wav_file_path;
     nh_.getParam("wav_file_path", wav_file_path);
-    
+
+    std::cout << wav_file_path << "\n";
+
     xf_tts::XF_TTS tts_client(nh_);
 
     tts_client.makeTextToWav(start, wav_file_path.c_str());

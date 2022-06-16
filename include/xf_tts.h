@@ -55,6 +55,7 @@ namespace xf_tts{
     private:
         const char* FileName = "/home/oem/catkin_ws/src/Olders_helper/audio/voice.wav";
         const char* PlayPath = "play /home/oem/catkin_ws/src/Olders_helper/audio/voice.wav";
+        std::string wav_file_path;
 
         ros::NodeHandle nh_;
         //ros::Subscriber sub = nh_.subscribe<std_msgs::String>("/voice/xf_tts_topic",3, bind(&XF_TTS::TextToSpeech, this, _1));
