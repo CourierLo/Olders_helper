@@ -24,7 +24,8 @@ namespace robot_action{
         SWITCH_LIGHT, SWITCH_STOVE, SWITCH_FAN, SWITCH_CURTAIN,
         REACH_LIVINGROOM, REACH_BEDROOM, REACH_KITCHEN,
         TOUR, BROADCAST_STATUS, 
-        LIGHT_ON, LIGHT_OFF, FAN_ON, FAN_OFF, CURTAIN_ON, CURTAIN_OFF, STOVE_ON, STOVE_OFF
+        LIGHT_ON, LIGHT_OFF, FAN_ON, FAN_OFF, CURTAIN_ON, CURTAIN_OFF, STOVE_ON, STOVE_OFF,
+        GREETING, TELL_A_JOKE, INTRODUCING
     } status;
 
     enum SITE {
@@ -92,7 +93,7 @@ namespace robot_action{
 
         bool headForLocation(SITE loc);
 
-        bool ttsAndPlay(std::string& text);
+        bool ttsAndPlay(std::string text);
 
         void applianceSwitch(int id, int op);
     };

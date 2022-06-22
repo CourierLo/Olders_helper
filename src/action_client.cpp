@@ -7,6 +7,17 @@
 
 typedef actionlib::SimpleActionClient<olders_helper::robotAction> Client;
 
+enum STATUS {
+    RESET = 0, 
+    CHECK_LIGHT, CHECK_GAS, CHECK_TEMP,
+    BROADCAST_LIGHT, BROADCAST_GAS, BROAD_TEMP,
+    SWITCH_LIGHT, SWITCH_STOVE, SWITCH_FAN, SWITCH_CURTAIN,
+    REACH_LIVINGROOM, REACH_BEDROOM, REACH_KITCHEN,
+    TOUR, BROADCAST_STATUS, 
+    LIGHT_ON, LIGHT_OFF, FAN_ON, FAN_OFF, CURTAIN_ON, CURTAIN_OFF, STOVE_ON, STOVE_OFF,
+    GREETING, TELL_A_JOKE, INTRODUCING
+} status;
+
 class ActionClient{
 protected:
     ros::NodeHandle nh;
@@ -52,26 +63,22 @@ public:
 
     void operationStrCB(const std_msgs::String::ConstPtr& msg){
         ROS_INFO("\033[32mReceive command string: %s \033[0m", msg->data);
-        // enum STATUS {
-        //     RESET = 0, 
-        //     CHECK_LIGHT = 1, CHECK_GAS = 2, CHECK_TEMP = 3,
-        //     BROADCAST_LIGHT = 4, BROADCAST_GAS = 5, BROAD_TEMP = 6,
-        //     SWITCH_LIGHT = 7, SWITCH_STOVE = 8, SWITCH_FAN = 9, SWITCH_CURTAIN = 10,
-        //     REACH_LIVINGROOM = 11, REACH_BEDROOM = 12, REACH_KITCHEN = 13,
-        //     TOUR = 14, BROADCAST_STATUS = 15
-        //     LIGHT_ON = 16, LIGHT_OFF, FAN_ON, FAN_OFF, CURTAIN_ON, CURTAIN_OFF, STOVE_ON, STOVE_OFF
-        // } status;
-        if(msg->data.find("客厅"))          sendInstruction(11);
-        else if(msg->data.find("卧室"))     sendInstruction(12);
-        else if(msg->data.find("厨房"))     sendInstruction(13);
-        else if(msg->data.find("开始巡逻"))  sendInstruction(14);
-        else if(msg->data.find("开光"))     sendInstruction(16);
-        else if(msg->data.find("关灯"))     sendInstruction(17);
-        else if(msg->data.find("打开风扇"))  sendInstruction(18);
-        else if(msg->data.find("关闭风扇"))  sendInstruction(19);
-        else if(msg->data.find("煤气检测"))  sendInstruction(2);
-        else if(msg->data.find("打开窗帘"))  sendInstruction(20);
-        else if(msg->data.find("关闭窗帘"))  sendInstruction(21);
+
+        if(msg->data.find("客厅"))          sendInstruction(REACH_LIVINGROOM);
+        else if(msg->data.find("卧室"))     sendInstruction(REACH_BEDROOM);
+        else if(msg->data.find("厨房"))     sendInstruction(REACH_KITCHEN);
+        else if(msg->data.find("开始巡逻"))  sendInstruction(TOUR);
+        else if(msg->data.find("开光"))     sendInstruction(LIGHT_ON);
+        else if(msg->data.find("关灯"))     sendInstruction(LIGHT_OFF);
+        else if(msg->data.find("打开风扇"))  sendInstruction(FAN_ON);
+        else if(msg->data.find("关闭风扇"))  sendInstruction(FAN_OFF);
+        else if(msg->data.find("煤气检测"))  sendInstruction(CHECK_GAS);
+        else if(msg->data.find("打开窗帘"))  sendInstruction(CURTAIN_OFF);
+        else if(msg->data.find("关闭窗帘"))  sendInstruction(CURTAIN_ON);
+        else if(msg->data.find("笑话"))      sendInstruction(TELL_A_JOKE);
+        else if(msg->data.find("你好"))     sendInstruction(GREETING);
+        else if(msg->data.find("你是谁"))   sendInstruction(INTRODUCING);
+        else                                sendInstruction(-1);
     }
 
     void finishCB(const actionlib::SimpleClientGoalState& state, const olders_helper::robotResultConstPtr& res){

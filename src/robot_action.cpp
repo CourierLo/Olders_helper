@@ -50,7 +50,7 @@ namespace robot_action{
         turnOffCurtainFlag = true;
     }
 
-    bool RobotAction::ttsAndPlay(std::string& text){
+    bool RobotAction::ttsAndPlay(std::string text){
         // XF TTS Service
         text_srv.request.text = text;
         tts_client.call(text_srv);
@@ -312,7 +312,18 @@ namespace robot_action{
             case STOVE_OFF:
                 applianceSwitch(6, OFF);
                 break;
-
+            case TELL_A_JOKE:
+                ttsAndPlay("两天占领基辅’特别军事行动现已进入第三个月。");
+                break;
+            case INTRODUCING:
+                ttsAndPlay("我是来自广东工业大学计算机学院ESAC实验室的助老小车！但别指望我是铁臂阿童木嗷。");
+                break;
+            case GREETING:
+                ttsAndPlay("你好呀，有什么可以帮到您的吗？");
+                break;
+            default:
+                ttsAndPlay("我不懂你在说什么呢。您能再说一遍吗？");
+                break;
         }
 
         // 整个过程没有发生抢占，设为成功
