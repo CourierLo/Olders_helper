@@ -53,8 +53,8 @@ namespace xf_tts{
 
     class XF_TTS{
     private:
-        const char* FileName = "/home/oem/catkin_ws/src/Olders_helper/audio/voice.wav";
-        const char* PlayPath = "play /home/oem/catkin_ws/src/Olders_helper/audio/voice.wav";
+        const char* FileName = "/home/pi/catkin_ws/src/Olders_helper/audio/voice.wav";
+        const char* PlayPath = "play /home/pi/catkin_ws/src/Olders_helper/audio/voice.wav";
         std::string wav_file_path;
 
         ros::NodeHandle nh_;

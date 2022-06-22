@@ -23,7 +23,8 @@ namespace robot_action{
         BROADCAST_LIGHT, BROADCAST_GAS, BROAD_TEMP,
         SWITCH_LIGHT, SWITCH_STOVE, SWITCH_FAN, SWITCH_CURTAIN,
         REACH_LIVINGROOM, REACH_BEDROOM, REACH_KITCHEN,
-        TOUR, BROADCAST_STATUS
+        TOUR, BROADCAST_STATUS, 
+        LIGHT_ON, LIGHT_OFF, FAN_ON, FAN_OFF, CURTAIN_ON, CURTAIN_OFF, STOVE_ON, STOVE_OFF
     } status;
 
     enum SITE {
@@ -31,7 +32,7 @@ namespace robot_action{
     } site;
 
     enum TRIG_NUM{
-        TEMP_TRIG = 24, LIGHT_TRIG = 500, GAS_TRIG = 20
+        TEMP_TRIG = 24, LIGHT_TRIG = 500, GAS_TRIG = 0
     } trig;
 
     typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;

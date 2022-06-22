@@ -138,7 +138,7 @@ namespace robot_action{
                     speech_text = "检测到光线太弱，为您打开灯和窗帘。";
                     if(!ttsAndPlay(speech_text))  return;
                     // turn on lights: s4 ~ s5
-                    applianceSwitch(4, OFF);  applianceSwitch(5, OFF);
+                    applianceSwitch(4, ON);  applianceSwitch(5, ON);
                     state_light = ON;
                 }
                 else if(command != TOUR){
@@ -252,15 +252,19 @@ namespace robot_action{
             case SWITCH_STOVE:
                 feedback_.progress = "switching stove...";
                 as_.publishFeedback(feedback_);
-                if(command == TOUR && 21 > GAS_TRIG){
+                if(command == TOUR && smokeExist > GAS_TRIG){
                     //audio_client.receive_audio_and_play("检测到有较大烟雾，为您关闭煤气灶。");
                     speech_text = "检测到有较大烟雾，为您关闭煤气灶。";
                     if(!ttsAndPlay(speech_text))  return;
                     // turn off stove
-
+                    applianceSwitch(6, OFF);
+                    state_stove = OFF;
                 }
                 else if(command != TOUR) {
                     // switch
+                    int next_state = state_stove ? OFF : ON;
+                    applianceSwitch(6, next_state);
+                    state_stove ^= state_stove;
 
                     break;
                 }
@@ -282,6 +286,33 @@ namespace robot_action{
                 feedback_.progress = "back to the origin.";
                 as_.publishFeedback(feedback_);
                 break;
+            
+            // 接下来是为了适应安卓写下的代码，我个人仍为只需要模拟开关就可以了，但是安卓那边把开灯关灯等分开了，那就只好分开写算了，这样搞代码就很丑
+            case LIGHT_ON:
+                applianceSwitch(4, ON);  applianceSwitch(5, ON);
+                break;
+            case LIGHT_OFF:
+                applianceSwitch(4, OFF);  applianceSwitch(5, OFF);
+                break;
+            case FAN_ON:
+                applianceSwitch(2, ON);  applianceSwitch(3, ON);
+                break;
+            case FAN_OFF:
+                applianceSwitch(2, OFF);  applianceSwitch(3, OFF);
+                break;
+            case CURTAIN_ON:
+                applianceSwitch(1, ON);
+                break;
+            case CURTAIN_OFF:  
+                applianceSwitch(1, OFF);
+                break;
+            case STOVE_ON:
+                applianceSwitch(6, ON);
+                break;
+            case STOVE_OFF:
+                applianceSwitch(6, OFF);
+                break;
+
         }
 
         // 整个过程没有发生抢占，设为成功
