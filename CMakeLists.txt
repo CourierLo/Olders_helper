@@ -170,7 +170,7 @@ target_link_libraries( test_mqtt
 )
 
 target_link_libraries( tts_voice_node
-  ${catkin_LIBRARIES} /home/pi/catkin_ws/src/Olders_helper/lib/libmsc_rasp.so
+  ${catkin_LIBRARIES} /home/courierlo/contest_ws/src/olders_helper/lib/libmsc.so
 )
 # /usr/local/lib libpaho-mqtt3a.so
 

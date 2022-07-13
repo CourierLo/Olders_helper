@@ -108,6 +108,7 @@ namespace robot_action{
         std::string speech_text;
         switch(command){
             case TOUR:
+                if(!ttsAndPlay("开始巡逻")) return;
             case REACH_LIVINGROOM:
                 //audio_client.receive_audio_and_play("前往客厅");
                 speech_text = "前往客厅";
@@ -320,6 +321,10 @@ namespace robot_action{
                 break;
             case GREETING:
                 ttsAndPlay("你好呀，有什么可以帮到您的吗？");
+                break;
+            case FALLEN:
+                ttsAndPlay("警告，警告，有人摔倒了！正在拨打紧急电话求助......");
+                sleep(15);
                 break;
             default:
                 ttsAndPlay("我不懂你在说什么呢。您能再说一遍吗？");

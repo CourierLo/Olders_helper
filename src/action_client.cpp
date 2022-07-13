@@ -15,7 +15,7 @@ enum STATUS {
     REACH_LIVINGROOM, REACH_BEDROOM, REACH_KITCHEN,
     TOUR, BROADCAST_STATUS, 
     LIGHT_ON, LIGHT_OFF, FAN_ON, FAN_OFF, CURTAIN_ON, CURTAIN_OFF, STOVE_ON, STOVE_OFF,
-    GREETING, TELL_A_JOKE, INTRODUCING
+    GREETING, TELL_A_JOKE, INTRODUCING, FALLEN
 } status;
 
 class ActionClient{
@@ -64,20 +64,21 @@ public:
     void operationStrCB(const std_msgs::String::ConstPtr& msg){
         ROS_INFO("\033[32mReceive command string: %s \033[0m", msg->data);
 
-        if(msg->data.find("客厅"))          sendInstruction(REACH_LIVINGROOM);
-        else if(msg->data.find("卧室"))     sendInstruction(REACH_BEDROOM);
-        else if(msg->data.find("厨房"))     sendInstruction(REACH_KITCHEN);
-        else if(msg->data.find("开始巡逻"))  sendInstruction(TOUR);
-        else if(msg->data.find("开光"))     sendInstruction(LIGHT_ON);
-        else if(msg->data.find("关灯"))     sendInstruction(LIGHT_OFF);
-        else if(msg->data.find("打开风扇"))  sendInstruction(FAN_ON);
-        else if(msg->data.find("关闭风扇"))  sendInstruction(FAN_OFF);
-        else if(msg->data.find("煤气检测"))  sendInstruction(CHECK_GAS);
-        else if(msg->data.find("打开窗帘"))  sendInstruction(CURTAIN_OFF);
-        else if(msg->data.find("关闭窗帘"))  sendInstruction(CURTAIN_ON);
-        else if(msg->data.find("笑话"))      sendInstruction(TELL_A_JOKE);
-        else if(msg->data.find("你好"))     sendInstruction(GREETING);
-        else if(msg->data.find("你是谁"))   sendInstruction(INTRODUCING);
+        if(msg->data.find("客厅") != msg->data.npos)          sendInstruction(REACH_LIVINGROOM);
+        else if(msg->data.find("卧室") != msg->data.npos)     sendInstruction(REACH_BEDROOM);
+        else if(msg->data.find("厨房") != msg->data.npos)     sendInstruction(REACH_KITCHEN);
+        else if(msg->data.find("开始巡逻") != msg->data.npos)  sendInstruction(TOUR);
+        else if(msg->data.find("开灯") != msg->data.npos)     sendInstruction(LIGHT_ON);
+        else if(msg->data.find("关灯") != msg->data.npos)     sendInstruction(LIGHT_OFF);
+        else if(msg->data.find("打开风扇") != msg->data.npos)  sendInstruction(FAN_ON);
+        else if(msg->data.find("关闭风扇") != msg->data.npos)  sendInstruction(FAN_OFF);
+        else if(msg->data.find("煤气监测") != msg->data.npos)  sendInstruction(CHECK_GAS);
+        else if(msg->data.find("打开窗帘") != msg->data.npos)  sendInstruction(CURTAIN_OFF);
+        else if(msg->data.find("关闭窗帘") != msg->data.npos)  sendInstruction(CURTAIN_ON);
+        else if(msg->data.find("笑话") != msg->data.npos)      sendInstruction(TELL_A_JOKE);
+        else if(msg->data.find("你好") != msg->data.npos)     sendInstruction(GREETING);
+        else if(msg->data.find("你是谁") != msg->data.npos)   sendInstruction(INTRODUCING);
+        else if(msg->data.find("fallen") != msg->data.npos)  sendInstruction(FALLEN);
         else                                sendInstruction(-1);
     }
 
